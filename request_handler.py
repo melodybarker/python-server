@@ -4,6 +4,8 @@ import json
 
 from animals import (
 	get_all_animals,
+    get_animals_by_location,
+	get_animals_by_status,
 	get_single_animal,
 	create_animal,
 	delete_animal,
@@ -11,6 +13,7 @@ from animals import (
 )
 from customers import (
 	get_all_customers,
+    get_customers_by_email,
 	get_single_customer,
 	create_customer,
 	delete_customer,
@@ -18,6 +21,7 @@ from customers import (
 )
 from employees import (
 	get_all_employees,
+    get_employees_by_location,
 	get_single_employee,
 	create_employee,
 	delete_employee,
@@ -37,7 +41,6 @@ from locations import (
 # work together for a common purpose. In this case, that
 # common purpose is to respond to HTTP requests from a client.
 class HandleRequests(BaseHTTPRequestHandler):
-
 	def parse_url(self, path):
 		path_params = path.split("/")
 		resource = path_params[1]
@@ -65,7 +68,7 @@ class HandleRequests(BaseHTTPRequestHandler):
 			except ValueError:
 				pass  # Request had trailing slash: /animals/
 
-			return (resource, id)
+		return (resource, id)
 
 	# Here's a class function
 	def _set_headers(self, status):
@@ -86,34 +89,56 @@ class HandleRequests(BaseHTTPRequestHandler):
 		# It handles any GET request.
 	def do_GET(self):
 		self._set_headers(200)
-		response = {}  # Default response
 
-		# Parse the URL and capture the tuple that is returned
-		(resource, id) = self.parse_url(self.path)
+		response = {}
 
-		if resource == "animals":
-			if id is not None:
-				response = f"{get_single_animal(id)}"
-			else:
-				response = f"{get_all_animals()}"
+		# Parse URL and store entire tuple in a variable
+		parsed = self.parse_url(self.path)
 
-		elif resource == "locations":
-			if id is not None:
-				response = f"{get_single_location(id)}"
-			else:
-				response = f"{get_all_locations()}"
+		# Response from parse_url() is a tuple with 2
+		# items in it, which means the request was for
+		# `/animals` or `/animals/2`
+		if len(parsed) == 2:
+			( resource, id ) = parsed
 
-		elif resource == "employees":
-			if id is not None:
-				response = f"{get_single_employee(id)}"
-			else:
-				response = f"{get_all_employees()}"
+			if resource == "animals":
+				if id is not None:
+					response = f"{get_single_animal(id)}"
+				else:
+					response = f"{get_all_animals()}"
+			elif resource == "customers":
+				if id is not None:
+					response = f"{get_single_customer(id)}"
+				else:
+					response = f"{get_all_customers()}"
+			elif resource == "employees":
+				if id is not None:
+					response = f"{get_single_employee(id)}"
+				else:
+					response = f"{get_all_employees()}"
+			elif resource == "locations":
+				if id is not None:
+					response = f"{get_single_location(id)}"
+				else:
+					response = f"{get_all_locations()}"
 
-		elif resource == "customers":
-			if id is not None:
-				respone = f"{get_single_customer(id)}"
-			else:
-				response = f"{get_all_customers()}"
+		# Response from parse_url() is a tuple with 3
+		# items in it, which means the request was for
+		# `/resource?parameter=value`
+		elif len(parsed) == 3:
+			( resource, key, value ) = parsed
+
+			# Is the resource `customers` and was there a
+			# query parameter that specified the customer
+			# email as a filtering value?
+			if key == "email" and resource == "customers":
+				response = get_customers_by_email(value)
+			elif key == "location_id" and resource == "employees":
+				response = get_employees_by_location(value)
+			elif key == "location_id" and resource == "animals":
+				response = get_animals_by_location(value)
+			elif key == "status" and resource == "animals":
+				response = get_animals_by_status(value)
 
 		self.wfile.write(response.encode())
 
@@ -198,6 +223,7 @@ class HandleRequests(BaseHTTPRequestHandler):
 		elif resource == "locations":
 			update_location(id, post_body)
 		self.wfile.write("".encode()) #encode the new item and send in response
+
 
 # This function is not inside the class. It is the starting
 # point of this application.
