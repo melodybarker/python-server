@@ -208,21 +208,30 @@ class HandleRequests(BaseHTTPRequestHandler):
 	# Here's a method on the class that overrides the parent's method.
 	# It handles any PUT request.
 	def do_PUT(self):
-		self._set_headers(204)
-		content_len = self.rfile.read('content-length', 0)
+		content_len = int(self.headers.get('content-length', 0))
 		post_body = self.rfile.read(content_len)
-		post_body = json.loands(post_body)
+		post_body = json.loads(post_body)
 
+		success = False
+			# rest of the elif's
 		(resource, id) = self.parse_url(self.path) #parse the url
 		if resource == "animals":
-			update_animal(id, post_body) #delete a single animal from the list
-		elif resource == "customers":
+			success = update_animal(id, post_body)
+		if success:
+			self._set_headers(204)
+		else:
+			self._set_headers(404)
+
+		self.wfile.write("".encode())
+			#delete a single animal from the list
+		if resource == "customers":
 			update_customer(id, post_body)
 		elif resource == "employees":
 			update_employee(id, post_body)
 		elif resource == "locations":
 			update_location(id, post_body)
 		self.wfile.write("".encode()) #encode the new item and send in response
+
 
 
 # This function is not inside the class. It is the starting
